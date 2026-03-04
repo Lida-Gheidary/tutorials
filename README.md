@@ -1,3 +1,207 @@
+DigitalData object method
+This method is simply using the browser’s Console to read the data layer (digitalData object) that lives on the page, instead of only relying on AEP Tags “Data Elements” to see what’s available and map it.
+
+What this method does (in plain terms)
+The website exposes a JavaScript object (data layer), often called digitalData, that contains information about the page, user, products, etc.
+
+In the browser Developer Tools → Console, you type digitalData (or a deeper path like digitalData.page.pageInfo.pageName) to see the current values.
+
+You then use those same paths in AEP Data Collection (Tags) (Data Elements, XDM object, Rules) to send the data to AEP / Analytics.
+
+So the Console is just a “window” to inspect what’s already on the page; you aren’t changing data there, you’re reading it and copying the correct paths into Tags configuration.
+
+Where in AEP / Tags you actually use it
+The main tabs (in Adobe Data Collection / Tags) where this method becomes useful are:
+
+Data Elements tab:
+
+Create data elements that read from digitalData, for example:
+
+Type: “JavaScript Variable” or “Custom Code”
+
+Path: digitalData.page.pageInfo.pageName.
+​
+
+Extensions → Adobe Experience Platform Web SDK (or similar):
+
+Configure an XDM Object data element that uses those Data Elements to build the XDM payload.
+
+Rules tab:
+
+In a “Page View” or “Custom Event” rule, set an action like “Send Event” (Web SDK) and choose your XDM Object data element.
+
+Optional: Datastream → Data Prep (in AEP UI, not Tags):
+
+Map incoming XDM fields to Analytics dimensions, so web.webPageDetails.name becomes your Page dimension automatically.
+
+You use Console only to verify data and learn the correct paths, then configure everything in these tabs.
+
+Typical tasks you do with this method
+Check that the data layer exists
+
+Open DevTools → Console.
+
+Type: digitalData and hit Enter.
+
+If it returns an object (not “undefined”), you know the data layer is present.
+
+Find the exact path to a value
+
+Example: you need the page name.
+
+In Console, type: digitalData.page.pageInfo and inspect keys like pageName, language, etc..
+​
+
+Copy the path (e.g. digitalData.page.pageInfo.pageName) to use in a Data Element.
+
+Validate values before building tags
+
+Change page, refresh, and re-run digitalData.page.pageInfo.pageName to check it updates correctly.
+
+This avoids debugging inside Tags later, because you already know the source value is correct.
+
+Use the path in Tags
+
+In Data Elements:
+
+Name: de_pageName
+
+Type: JavaScript Variable
+
+Path: digitalData.page.pageInfo.pageName
+
+In an XDM Object data element, set web.webPageDetails.name = %de_pageName%.
+
+In a Rule, use that XDM Object when calling sendEvent.
+
+Example: what you see in Console
+Imagine the site has this data layer:
+
+js
+window.digitalData = {
+  page: {
+    pageInfo: {
+      pageName: "PLP - Women Shoes",
+      pageType: "product-list",
+      language: "en-GB"
+    }
+  },
+  user: {
+    profile: {
+      profileID: "user_12345",
+      loginStatus: "logged-in"
+    }
+  }
+};
+Commands and example outputs in Console:
+
+Command:
+
+js
+digitalData
+Output: an expandable object showing page, user, etc.
+
+Command:
+
+js
+digitalData.page.pageInfo
+Output (object):
+
+js
+{
+  pageName: "PLP - Women Shoes",
+  pageType: "product-list",
+  language: "en-GB"
+}
+Command:
+
+js
+digitalData.page.pageInfo.pageName
+Output (string):
+
+js
+"PLP - Women Shoes"
+Full JSON dump (handy for copy‑pasting for documentation/tests):
+
+js
+JSON.stringify(window.digitalData, null, 2)
+Output: formatted JSON representing the entire data layer.
+
+That last command is useful to quickly document what’s available on a page and then design Data Elements and XDM mappings from it.
+
+Where and when to use these Console checks
+When designing the tracking spec to confirm that the site actually exposes required fields in digitalData.
+
+When creating or debugging Data Elements in Tags: verify the path in Console first, then configure the element.
+
+When troubleshooting missing Analytics values:
+
+Step 1: Check if digitalData has the value in Console.
+
+Step 2: If yes, debug Tags / Rules / XDM mapping.
+
+Step 3: If no, it’s a site / data layer issue, not a Tags issue
+
+----------------------------- DigitalData completion
+To get a comprehensive list of all available digitalData paths and values, systematically inspect across 10-15 key pages representing your site's main templates — this covers 95% of scenarios without overkill.
+
+Pages to check (prioritize these)
+1 homepage
+3-5 product pages (different categories)
+2 category/listing pages
+1 search results page
+1 cart page
+1 checkout/thank-you page
+1 login/register page
+1 logged-in profile page
+1 error/404 page
+2 dynamic pages (e.g. PDP with variants, blog post)
+
+Step-by-step process (30-60 min total)
+Prep a Google Sheet or Notion table (columns: Page URL, Command, Path, Value, Notes/Issues).
+
+For each page:
+Visit → F12 → Console → clear console (Ctrl+L).
+Run 4 core commands (copy-paste one by one):
+text
+digitalData
+text
+digitalData.page.pageInfo
+text
+digitalData.user.profile
+text
+digitalData.events
+If events exist (e.g. add to cart), trigger the action and re-run digitalData.events.
+
+Expand and document:
+Right-click objects → Copy object (or use JSON.stringify(digitalData, null, 2)).
+Paste into your sheet → note every key/value under the path (e.g. digitalData.page.pageInfo.pageName = "PLP - Shoes").
+Flag missing data (e.g. digitalData.user = undefined).
+Cross-check: Refresh page, navigate away/return, confirm values update correctly.
+Total commands per page: 4-6 (core 4 + events + stringify if complex).
+
+How to store the comprehensive list
+Option 1: Google Sheet (best for sharing/team audits)
+Page URL	Command/Path	Full Value	Available Keys	Issues
+https://site.com/home	digitalData.page.pageInfo.pageName	"Homepage"	pageName, pageType, language	None
+https://site.com/pdp/shoes	digitalData.product[0].productInfo.productName	"Nike Air Max"	productName, price, SKU	price missing
+Option 2: Single JSON file (for dev handoff)
+
+Run JSON.stringify(window.digitalData, null, 2) on each page → save as data-layer-[page-type].json.
+Or combine into one master file with page metadata.
+
+Option 3: Markdown/Notion (for docs)
+text
+## Homepage
+**digitalData.page.pageInfo**
+- pageName: "Homepage"
+- pageType: "home"
+
+**digitalData.user.profile**
+- profileID: undefined
+This becomes your tracking spec blueprint — directly copy paths to create Data Elements in AEP Tags (e.g. %digitalData.page.pageInfo.pageName%). Re-run monthly or post-site changes
+
+--------------------------------
 XDM, ExperienceEvent and schemas
 XDM system overview (why standard schemas, field groups, tenant fields):
 https://experienceleague.adobe.com/en/docs/experience-platform/xdm/home

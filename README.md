@@ -1,83 +1,66 @@
-DigitalData object method
-This method is simply using the browser’s Console to read the data layer (digitalData object) that lives on the page, instead of only relying on AEP Tags “Data Elements” to see what’s available and map it.
+# Reading the Data Layer via Browser Console
 
-What this method does (in plain terms)
-The website exposes a JavaScript object (data layer), often called digitalData, that contains information about the page, user, products, etc.
+This method uses the browser's **Console** to read the `digitalData` object directly on the page, instead of relying solely on AEP Tags "Data Elements" to discover and map available data.
+---
+## What This Method Does
+The website exposes a JavaScript object (the **data layer**), often called `digitalData`, containing information about the page, user, products, etc.
+- In **DevTools → Console**, type `digitalData` (or a deeper path like `digitalData.page.pageInfo.pageName`) to see current values
+- Use those same paths in **AEP Data Collection (Tags)** — in Data Elements, XDM objects, and Rules — to send data to AEP / Analytics
+- The Console is a **read-only window** to inspect what's already on the page; you copy correct paths into Tags configuration, you don't change data there
+---
+## Where in AEP / Tags You Use It
+### Data Elements Tab
+Create data elements that read from `digitalData`:
+- **Type:** `JavaScript Variable` or `Custom Code`
+- **Path:** `digitalData.page.pageInfo.pageName`
+- 
+### Extensions → Adobe Experience Platform Web SDK
+Configure an **XDM Object** data element that uses those Data Elements to build the XDM payload.
+### Rules Tab
+In a `Page View` or `Custom Event` rule, set an action like **Send Event** (Web SDK) and attach your XDM Object data element.
+### Optional: Datastream → Data Prep (AEP UI, not Tags)
+Map incoming XDM fields to Analytics dimensions — e.g. `web.webPageDetails.name` becomes your **Page** dimension automatically.
+> **Note:** You use the Console only to verify data and learn correct paths, then configure everything inside these tabs.
+---
+## Typical Tasks
 
-In the browser Developer Tools → Console, you type digitalData (or a deeper path like digitalData.page.pageInfo.pageName) to see the current values.
+### 1. Check That the Data Layer Exists
+Open DevTools → Console and run:
+```js
+digitalData
+```
+If it returns an object (not `undefined`), the data layer is present.
 
-You then use those same paths in AEP Data Collection (Tags) (Data Elements, XDM object, Rules) to send the data to AEP / Analytics.
+### 2. Find the Exact Path to a Value
+```js
+digitalData.page.pageInfo
+// Inspect keys like pageName, language, etc.
+```
+Copy the path (e.g. `digitalData.page.pageInfo.pageName`) to use in a Data Element.
 
-So the Console is just a “window” to inspect what’s already on the page; you aren’t changing data there, you’re reading it and copying the correct paths into Tags configuration.
+### 3. Validate Values Before Building Tags
+Change the page, refresh, and re-run:
+```js
+digitalData.page.pageInfo.pageName
+```
+This confirms the value updates correctly before you configure anything in Tags.
 
-Where in AEP / Tags you actually use it
-The main tabs (in Adobe Data Collection / Tags) where this method becomes useful are:
+### 4. Use the Path in Tags
+- **Data Element name:** `de_pageName`
+- **Type:** JavaScript Variable
+- **Path:** `digitalData.page.pageInfo.pageName`
 
-Data Elements tab:
+In an XDM Object data element:
+```
+web.webPageDetails.name = %de_pageName%
+```
+In a Rule, use that XDM Object when calling `sendEvent`.
+---
+## Example: What You See in Console
 
-Create data elements that read from digitalData, for example:
+Suppose the site has this data layer:
 
-Type: “JavaScript Variable” or “Custom Code”
-
-Path: digitalData.page.pageInfo.pageName.
-​
-
-Extensions → Adobe Experience Platform Web SDK (or similar):
-
-Configure an XDM Object data element that uses those Data Elements to build the XDM payload.
-
-Rules tab:
-
-In a “Page View” or “Custom Event” rule, set an action like “Send Event” (Web SDK) and choose your XDM Object data element.
-
-Optional: Datastream → Data Prep (in AEP UI, not Tags):
-
-Map incoming XDM fields to Analytics dimensions, so web.webPageDetails.name becomes your Page dimension automatically.
-
-You use Console only to verify data and learn the correct paths, then configure everything in these tabs.
-
-Typical tasks you do with this method
-Check that the data layer exists
-
-Open DevTools → Console.
-
-Type: digitalData and hit Enter.
-
-If it returns an object (not “undefined”), you know the data layer is present.
-
-Find the exact path to a value
-
-Example: you need the page name.
-
-In Console, type: digitalData.page.pageInfo and inspect keys like pageName, language, etc..
-​
-
-Copy the path (e.g. digitalData.page.pageInfo.pageName) to use in a Data Element.
-
-Validate values before building tags
-
-Change page, refresh, and re-run digitalData.page.pageInfo.pageName to check it updates correctly.
-
-This avoids debugging inside Tags later, because you already know the source value is correct.
-
-Use the path in Tags
-
-In Data Elements:
-
-Name: de_pageName
-
-Type: JavaScript Variable
-
-Path: digitalData.page.pageInfo.pageName
-
-In an XDM Object data element, set web.webPageDetails.name = %de_pageName%.
-
-In a Rule, use that XDM Object when calling sendEvent.
-
-Example: what you see in Console
-Imagine the site has this data layer:
-
-js
+```js
 window.digitalData = {
   page: {
     pageInfo: {
@@ -93,54 +76,63 @@ window.digitalData = {
     }
   }
 };
-Commands and example outputs in Console:
+```
 
-Command:
+### Console Commands & Outputs
 
-js
+**Command:**
+```js
 digitalData
-Output: an expandable object showing page, user, etc.
+```
+**Output:** expandable object showing `page`, `user`, etc.
 
-Command:
+---
 
-js
+**Command:**
+```js
 digitalData.page.pageInfo
-Output (object):
-
-js
+```
+**Output:**
+```js
 {
   pageName: "PLP - Women Shoes",
   pageType: "product-list",
   language: "en-GB"
 }
-Command:
+```
 
-js
+---
+
+**Command:**
+```js
 digitalData.page.pageInfo.pageName
-Output (string):
-
-js
+```
+**Output:**
+```js
 "PLP - Women Shoes"
-Full JSON dump (handy for copy‑pasting for documentation/tests):
+```
 
-js
+---
+
+**Full JSON dump** (handy for documentation and test design):
+```js
 JSON.stringify(window.digitalData, null, 2)
-Output: formatted JSON representing the entire data layer.
+```
+Returns a formatted JSON string of the entire data layer — useful for quickly documenting what's available and designing Data Elements and XDM mappings from it.
 
-That last command is useful to quickly document what’s available on a page and then design Data Elements and XDM mappings from it.
+---
 
-Where and when to use these Console checks
-When designing the tracking spec to confirm that the site actually exposes required fields in digitalData.
+## When to Use These Console Checks
 
-When creating or debugging Data Elements in Tags: verify the path in Console first, then configure the element.
+- **Designing the tracking spec** — confirm the site exposes required fields in `digitalData`
+- **Creating or debugging Data Elements** — verify the path in Console first, then configure the element
+- **Troubleshooting missing Analytics values:**
+  1. Check if `digitalData` has the value in Console
+  2. If **yes** → debug Tags / Rules / XDM mapping
+  3. If **no** → it's a site/data layer issue, not a Tags issue
 
-When troubleshooting missing Analytics values:
 
-Step 1: Check if digitalData has the value in Console.
 
-Step 2: If yes, debug Tags / Rules / XDM mapping.
-
-Step 3: If no, it’s a site / data layer issue, not a Tags issue
 
 ----------------------------- DigitalData completion
 To get a comprehensive list of all available digitalData paths and values, systematically inspect across 10-15 key pages representing your site's main templates — this covers 95% of scenarios without overkill.
